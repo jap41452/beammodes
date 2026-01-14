@@ -8,53 +8,87 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/numeric/1.2.6/numeric.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
   <style>
-    body { background: #f4f4f4; font-family: sans-serif; }
-    #beamCanvas { border: 1px solid #ccc; margin-top: 12px; cursor: pointer; background: #fff; }
+    body { background: #f4f4f4; font-family: sans-serif; margin: 20px; }
+    h2 { margin-bottom: 10px; }
+    
+    /* Container for canvas and toolbar to keep widths consistent */
+    #container { width: 900px; }
+
+    #beamCanvas { border: 1px solid #ccc; margin-top: 12px; cursor: pointer; background: #fff; display: block; }
+    
     .swal2-popup { font-size: 12px !important; width: auto !important; min-width: 250px !important; }
     .swal2-input, .swal2-select { font-size: 12px !important; width: 120px !important; margin: 5px !important; }
     .swal2-html-container label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
     .swal2-html-container label span { margin-right: 10px; }
-    .toolbar { display: grid; grid-template-columns: repeat(5, auto); gap: 6px; align-items: center; }
-    .results { margin-top: 8px; font-size: 14px; }
+
+    /* Updated Toolbar Layout */
+    .toolbar { 
+      display: flex; 
+      gap: 8px; 
+      align-items: center; 
+      width: 900px; /* Match canvas width */
+      background: #e0e0e0;
+      padding: 8px;
+      box-sizing: border-box;
+      border-radius: 4px;
+    }
+
+    .results { margin-top: 8px; font-size: 14px; width: 900px; }
     .muted { color:#666; font-size: 12px; }
+    
     .modeCanvas { display:block; margin: 12px 0; border: 1px solid #ccc; background:#fff; }
+    
     #modeToggles label { margin-right: 10px; cursor: pointer; }
     #animControls label { margin-left: 12px; }
     #animControls button { margin-left: 6px; }
-      /* Hard-fix for hosts that hide label text (e.g., CMS themes that offscreen labels) */
-    .toolbar label { display: inline-flex; align-items: center; gap: 6px; color: #000 !important; text-indent: 0 !important; }
-    .toolbar label::before { content: none !important; }
-    .toolbar label .field-text { color:#000 !important; font-size:14px !important; display:inline !important; }
-.toolbar label { gap: 4px; }
-    .toolbar input[type=number] { width: 60px; padding: 2px 4px; height: 26px; }
-    #numSegments { width: 32px; }
-    #gravityInput { width: 32px !important; }
-    .toolbar button { padding: 4px 10px; font-size: 12px; line-height: 1.1; height: 28px; }
-</style>
+
+    /* Label styling */
+    .toolbar label { display: inline-flex; align-items: center; gap: 4px; color: #000; font-size: 14px; }
+    .toolbar input[type=number] { width: 50px; padding: 4px; height: 20px; border: 1px solid #999; border-radius: 3px;}
+    
+    /* Button styling */
+    .toolbar button { 
+      padding: 5px 12px; 
+      font-size: 13px; 
+      cursor: pointer; 
+      background: #eee; 
+      border: 1px solid #999; 
+      border-radius: 3px; 
+    }
+    .toolbar button:hover { background: #ddd; }
+  </style>
 </head>
 <body>
   <h2>Beam Modal Solver</h2>
 
-  <div class="toolbar">
-    <label><span class="field-text">Segments (max 10):</span> <input id="numSegments" type="number" min="1" max="10" value="4"></label>
-    <label><span class="field-text">Gravity (G):</span> <input id="gravityInput" type="number" value="386" style="width:64px"></label>
-    <button onclick="buildBeam()">Build Beam</button>
-    <button onclick="computeModesRefined()">Compute Modes</button>
-  </div>
+  <div id="container">
+    <div class="toolbar">
+      <label>Segments (max 10): <input id="numSegments" type="number" min="1" max="10" value="2"></label>
+      <label>Gravity (G): <input id="gravityInput" type="number" value="386" style="width:60px"></label>
+      <button onclick="buildBeam()">Build Beam</button>
+      <button onclick="computeModesRefined()">Compute Modes</button>
+      
+      <button onclick="exportJSON()">Export JSON</button>
+      <button onclick="exportCSV()">Export CSV</button>
+    </div>
 
-  <canvas id="beamCanvas" width="900" height="220"></canvas>
-  <div id="freqList" class="results"></div>
-  <div id="modeToggles" class="results"></div>
-  <div id="animControls" class="results">
-    <strong>Animate:</strong>
-    <button id="btnPlay" disabled>Play</button>
-    <button id="btnPause" disabled>Pause</button>
-    <label>Mode <select id="animMode" style="width:60px"></select></label>
-    <label>Speed ×<input id="animSpeed" type="range" min="0.01" max="1" step="0.01" value="1" style="vertical-align: middle; width:120px"> <span id="animSpeedVal">1.00</span></label>
-    <label>Amp ×<input id="animAmp" type="range" min="0.2" max="1.5" step="0.1" value="1" style="vertical-align: middle; width:120px"> <span id="animAmpVal">1.0</span></label>
-    <span class="muted">(animates the selected mode only)</span>
+    <canvas id="beamCanvas" width="900" height="220"></canvas>
+    
+    <div id="freqList" class="results"></div>
+    <div id="modeToggles" class="results"></div>
+    
+    <div id="animControls" class="results">
+      <strong>Animate:</strong>
+      <button id="btnPlay" disabled>Play</button>
+      <button id="btnPause" disabled>Pause</button>
+      <label>Mode <select id="animMode" style="width:60px"></select></label>
+      <label>Speed ×<input id="animSpeed" type="range" min="0.01" max="1" step="0.01" value="1" style="vertical-align: middle; width:120px"> <span id="animSpeedVal">1.00</span></label>
+      <label>Amp ×<input id="animAmp" type="range" min="0.2" max="1.5" step="0.1" value="1" style="vertical-align: middle; width:120px"> <span id="animAmpVal">1.0</span></label>
+      <span class="muted">(animates the selected mode only)</span>
+    </div>
+    
+    <canvas id="modesCombined" width="900" height="340" class="modeCanvas"></canvas>
   </div>
-  <canvas id="modesCombined" width="900" height="340" class="modeCanvas"></canvas>
 
 <script>
 // --- configuration ---
@@ -67,12 +101,12 @@ let lastModes = null; // [{lambdaGEP, freq, vec(full DOF)}] on refined grid
 // animation state
 const anim = { running:false, rafId:0, t0:0, modeIndex:0, speed:1, amp:1 };
 
-function getRefine(){ return INTERNAL_NODES_PER_SEG; } // keep API, but constant
+function getRefine(){ return INTERNAL_NODES_PER_SEG; }
 
 function buildBeam() {
   stopAnimation();
   const S = Math.max(1, Math.min(10, parseInt(document.getElementById("numSegments").value)));
-  const totalL = 96; // arbitrary default total length in length units
+  const totalL = 96; // arbitrary default total length
   // reset segments
   segments = [];
   for (let i = 0; i < S; i++) {
@@ -125,14 +159,19 @@ function drawBeam() {
   const totalLength = segments.reduce((sum, seg) => sum + seg.L, 0);
   const scaleX = (canvas.width - 2 * margin) / totalLength;
   const maxEI = Math.max(...segments.map(seg => seg.E * seg.I));
-  const maxHeight = 0.05 * canvas.height;
+  
+  // 2) Size the initial segments thicker (similar to static module)
+  // Static module uses approx 25-40% of canvas height for max beam
+  const maxHeight = 0.35 * canvas.height; 
 
   let x = margin;
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
     const width = seg.L * scaleX;
     const height = (seg.E * seg.I / maxEI) * maxHeight;
-    ctx.fillStyle = "#666";
+    
+    // Use a lighter gray fill like the static module example
+    ctx.fillStyle = "#ccc"; 
     ctx.fillRect(x, midY - height / 2, width, height);
 
     // segment text
@@ -140,7 +179,7 @@ function drawBeam() {
     ctx.textAlign = "center";
     const props = [ `E: ${seg.E}`, `I: ${seg.I}`, `L: ${seg.L}`, `ρ: ${seg.rho}`, `A: ${seg.A}` ];
     const startY = midY + height / 2 + 12;
-    ctx.font = "12px sans-serif";
+    ctx.font = "11px sans-serif";
     for (let j = 0; j < props.length; j++) ctx.fillText(props[j], x + width / 2, startY + j * 14);
 
     // draw primary node at left end for first segment only
@@ -153,7 +192,6 @@ function drawBeam() {
   }
 }
 
-// Build primary node positions only (no internal nodes shown or clickable)
 function buildPrimaryNodePositionMap(){
   const margin = 50; 
   const totalLength = segments.reduce((sum, seg) => sum + seg.L, 0) || 1;
@@ -165,54 +203,46 @@ function buildPrimaryNodePositionMap(){
     cumL += segments[i].L;
     xs.push(margin + cumL * scaleX);
   }
-  // indices are 0..S
   const is = xs.map((_,idx)=> idx);
   return { xs, is };
 }
 
 function drawNodeFeatures(ctx, x, y, node = { bc: 'free', W:0, Kv:0, Kr:0 }){
   ctx.save();
-  ctx.strokeStyle = "black"; ctx.lineWidth = 2; ctx.fillStyle = "black";
+  ctx.strokeStyle = "black"; ctx.lineWidth = 2; 
+  
+  // 3) Make nodes blue (#06f) like the static module
+  ctx.fillStyle = "#06f";
 
-  // support glyphs
+  // support glyphs (keep black outlines)
   if (node.bc === "pinned") {
     ctx.beginPath(); ctx.moveTo(x - 15, y + 17); ctx.lineTo(x, y); ctx.lineTo(x + 15, y + 17); ctx.closePath(); ctx.stroke();
   } else if (node.bc === "fixed") {
     ctx.beginPath(); ctx.moveTo(x - 5, y - 20); ctx.lineTo(x - 5, y + 20); ctx.moveTo(x + 5, y - 20); ctx.lineTo(x + 5, y + 20); ctx.stroke();
   }
 
-  // Kv vertical spring (zig-zag below)
+  // Kv vertical spring
   if (node.Kv > 0) {
     ctx.beginPath(); let springY = y + 8; ctx.moveTo(x, springY);
     for (let i=0;i<4;i++){ ctx.lineTo(x + (i%2? -6:6), springY += 6); }
     ctx.lineTo(x, springY + 6); ctx.stroke();
   }
 
-  // Kr rotational spring (same style as static solver)
+  // Kr rotational spring
   if (node.Kr > 0) {
     ctx.beginPath();
-    ctx.moveTo(x-35, y-20);
-    ctx.lineTo(x-25, y-20);
-    ctx.lineTo(x-22, y-30);
-    ctx.lineTo(x-16, y-10);
-    ctx.lineTo(x-10, y-30);
-    ctx.lineTo(x-8,  y-20);
-    ctx.lineTo(x,    y-20);
-    ctx.lineTo(x,    y+20);
-    ctx.lineTo(x+8,  y+20);
-    ctx.lineTo(x+10, y+30);
-    ctx.lineTo(x+16, y+10);
-    ctx.lineTo(x+22, y+30);
-    ctx.lineTo(x+25, y+20);
-    ctx.lineTo(x+35, y+20);
+    ctx.moveTo(x-35, y-20); ctx.lineTo(x-25, y-20); ctx.lineTo(x-22, y-30); ctx.lineTo(x-16, y-10);
+    ctx.lineTo(x-10, y-30); ctx.lineTo(x-8,  y-20); ctx.lineTo(x,    y-20); ctx.lineTo(x,    y+20);
+    ctx.lineTo(x+8,  y+20); ctx.lineTo(x+10, y+30); ctx.lineTo(x+16, y+10); ctx.lineTo(x+22, y+30);
+    ctx.lineTo(x+25, y+20); ctx.lineTo(x+35, y+20);
     ctx.stroke();
   }
 
-  // node dot (large if W>0)
-  const r = (node.W && node.W > 0) ? 8 : 4;
-  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+  // node dot (Blue)
+  const r = (node.W && node.W > 0) ? 8 : 5;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill(); // Fills with #06f
 
-  // values label (W, Kv, Kr)
+  // labels
   function fmt(v){
     if (!isFinite(v)) return '0';
     const a = Math.abs(v);
@@ -234,7 +264,6 @@ function drawNodeFeatures(ctx, x, y, node = { bc: 'free', W:0, Kv:0, Kr:0 }){
   ctx.restore();
 }
 
-// Canvas click handler: edit segment or primary node
 const beamCanvas = document.getElementById("beamCanvas");
 beamCanvas.addEventListener("click", function (e) {
   const rect = beamCanvas.getBoundingClientRect();
@@ -247,14 +276,12 @@ beamCanvas.addEventListener("click", function (e) {
   if (totalLength <= 0) return;
   const scaleX = (beamCanvas.width - 2 * margin) / totalLength;
   const maxEI = Math.max(...segments.map(seg => seg.E * seg.I)) || 1;
-  const maxHeight = 0.05 * beamCanvas.height;
+  const maxHeight = 0.35 * beamCanvas.height;
 
-  // Primary node positions & indices only
   const map = buildPrimaryNodePositionMap();
   const nodeXs = map.xs;
   const nodeIs = map.is;
 
-  // 1) Node hit test first
   const nodeHitR = 14;
   for (let k = 0; k < nodeXs.length; k++) {
     const dx0 = xClick - nodeXs[k];
@@ -266,7 +293,6 @@ beamCanvas.addEventListener("click", function (e) {
     }
   }
 
-  // 2) Segment hit test (exclude near nodes)
   let x = margin;
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
@@ -287,12 +313,12 @@ beamCanvas.addEventListener("click", function (e) {
 });
 
 async function editNode(i) {
-  if (i < 0 || i >= nodes.length) return; // safety
+  if (i < 0 || i >= nodes.length) return;
   const node = nodes[i] || { bc:'free', W:0, Kv:0, Kr:0 };
   const { value: data } = await Swal.fire({
     title: `Node ${i} Properties`,
     html:
-      `<label><span>BC:</span><select id=\"bc\" class=\"swal2-select\">\n         <option value=\"free\" ${node.bc === 'free' ? 'selected' : ''}>Free</option>\n         <option value=\"pinned\" ${node.bc === 'pinned' ? 'selected' : ''}>Simple support (w=0, θ free)</option>\n         <option value=\"fixed\" ${node.bc === 'fixed' ? 'selected' : ''}>Fixed</option>\n       </select></label>\n       <label><span>W (lbf):</span><input id=\"W\" class=\"swal2-input\" value=\"${node.W}\"></label>\n       <label><span>Kv (lb/in):</span><input id=\"Kv\" class=\"swal2-input\" value=\"${node.Kv}\"></label>\n       <label><span>Kr (in·lb/rad):</span><input id=\"Kr\" class=\"swal2-input\" value=\"${node.Kr}\"></label>\n       <span class=\"muted\">Used in modal: Mww += W/G; Kww += Kv; Kθθ += Kr</span>`,
+      `<label><span>BC:</span><select id=\"bc\" class=\"swal2-select\">\n          <option value=\"free\" ${node.bc === 'free' ? 'selected' : ''}>Free</option>\n          <option value=\"pinned\" ${node.bc === 'pinned' ? 'selected' : ''}>Simple support (w=0, θ free)</option>\n          <option value=\"fixed\" ${node.bc === 'fixed' ? 'selected' : ''}>Fixed</option>\n        </select></label>\n        <label><span>W (lbf):</span><input id=\"W\" class=\"swal2-input\" value=\"${node.W}\"></label>\n        <label><span>Kv (lb/in):</span><input id=\"Kv\" class=\"swal2-input\" value=\"${node.Kv}\"></label>\n        <label><span>Kr (in·lb/rad):</span><input id=\"Kr\" class=\"swal2-input\" value=\"${node.Kr}\"></label>\n        <span class=\"muted\">Used in modal: Mww += W/G; Kww += Kv; Kθθ += Kr</span>`,
     focusConfirm: false,
     preConfirm: () => [
       document.getElementById("bc").value,
@@ -308,24 +334,21 @@ async function editNode(i) {
 function computeModesRefined() {
   stopAnimation();
   if (!segments.length) { buildBeam(); return; }
-  const m = getRefine(); // fixed 10 internal nodes/segment
+  const m = getRefine(); 
 
   const g = parseFloat(document.getElementById("gravityInput").value) || 386;
   const S = segments.length; 
-  const Nn_ref = S * (m + 1) + 1; // refined nodes
+  const Nn_ref = S * (m + 1) + 1; 
   const dofPerNode = 2; const N = dofPerNode * Nn_ref;
 
   const M = numeric.rep([N, N], 0); const K = numeric.rep([N, N], 0);
 
-  // Assemble per sub-element (refinement) with CONSISTENT mass
   for (let i = 0; i < S; i++) {
     const seg = segments[i];
     const EI = seg.E * seg.I;
-    const mu = (seg.rho / g) * seg.A; // mass/length
-    const sub = m + 1; // elements per segment
+    const mu = (seg.rho / g) * seg.A; 
+    const sub = m + 1; 
     const Lsub = seg.L / sub;
-
-    // refined node index at start of this segment in global refined list
     const startRef = i * (m + 1);
 
     for (let j = 0; j < sub; j++) {
@@ -333,7 +356,6 @@ function computeModesRefined() {
       const n2 = n1 + 1;
       const dofs = [ 2*n1, 2*n1+1, 2*n2, 2*n2+1 ];
 
-      // stiffness (Hermite beam)
       const kLocal = [
         [12, 6*Lsub, -12, 6*Lsub],
         [6*Lsub, 4*Lsub*Lsub, -6*Lsub, 2*Lsub*Lsub],
@@ -347,7 +369,6 @@ function computeModesRefined() {
         }
       }
 
-      // CONSISTENT mass matrix (Euler–Bernoulli)
       const c = mu * Lsub / 420;
       const mLocal = [
         [156,    22*Lsub,  54,    -13*Lsub],
@@ -364,9 +385,8 @@ function computeModesRefined() {
     }
   }
 
-  // Add nodal springs and extra lumped masses at PRIMARY nodes only
   for (let p=0; p<nodes.length; p++){
-    const refIdx = p * (m + 1); // map primary to refined index
+    const refIdx = p * (m + 1); 
     const v = 2*refIdx, r = 2*refIdx+1;
     const W = Number(nodes[p].W)||0; const Kv = Number(nodes[p].Kv)||0; const Kr = Number(nodes[p].Kr)||0;
     if (W) M[v][v] += W / g;
@@ -374,7 +394,6 @@ function computeModesRefined() {
     if (Kr) K[r][r] += Kr;
   }
 
-  // constraints from BC at PRIMARY nodes only
   const constrained = new Set();
   for (let p=0; p<nodes.length; p++){
     const bc = nodes[p].bc; const refIdx = p * (m + 1); const v = 2*refIdx, r = 2*refIdx+1;
@@ -385,9 +404,8 @@ function computeModesRefined() {
 
   const Kred = submat(K, free); const Mred = submat(M, free);
 
-  // Direct eigensolve of inv(M)K (ω²), keep up to 3 modes
   let A; try { A = numeric.dot(numeric.inv(Mred), Kred); } catch(e){ Swal.fire('Error','M is singular. Check W/g and density/area.','error'); return; }
-  const eig = numeric.eig(A); const vals = eig.lambda.x; const V = eig.E.x; // assume real
+  const eig = numeric.eig(A); const vals = eig.lambda.x; const V = eig.E.x; 
   const pairs = vals.map((val, i) => ({ val: val, vec: V.map(row => row[i]) }))
                     .filter(p => p.val > 0 && isFinite(p.val))
                     .sort((a,b)=> a.val-b.val)
@@ -459,12 +477,11 @@ function renderCombinedModes(){
   if (!lastModes || !lastModes.length) return;
 
   const m = getRefine();
-  // refined x positions across the entire beam (one per refined node)
   const xPositions = [];
   let x = 0;
   for (let i=0;i<segments.length;i++){
     const L = segments[i].L; const sub = m+1; const Lsub = L/sub;
-    const start = (i===0) ? 0 : 1; // avoid duplicate of shared boundary
+    const start = (i===0) ? 0 : 1; 
     for (let j=start; j<=sub; j++) xPositions.push(x + j*Lsub);
     x += L;
   }
@@ -472,12 +489,10 @@ function renderCombinedModes(){
   const totalLength = segments.reduce((s,sg)=>s+sg.L,0) || 1;
   const scaleX = canvas.width / totalLength;
   const offsetY = canvas.height/2;
-  const scaleY = canvas.height * 0.4; // shapes normalized to ±1
+  const scaleY = canvas.height * 0.4; 
 
-  // guide lines: +1, 0, -1
   drawGuides(ctx, canvas, offsetY, scaleY);
 
-  // which modes are selected?
   const selected = [];
   for (let i=0;i<lastModes.length;i++){
     const cb = document.getElementById('showMode' + (i+1));
@@ -488,9 +503,8 @@ function renderCombinedModes(){
 
   for (let idx of selected){
     const mode = lastModes[idx];
-    const full = mode.vec; // full DOFs on refined grid
+    const full = mode.vec; 
 
-    // extract nodal deflections (every 2 entries)
     const w = []; for (let d=0; d<full.length; d+=2) w.push(full[d]);
 
     ctx.beginPath(); ctx.lineWidth = 2; ctx.strokeStyle = colors[idx % colors.length];
@@ -518,12 +532,10 @@ function drawGuides(ctx, canvas, offsetY, scaleY){
 }
 
 function drawAxesAndLegend(ctx, canvas, modes, useToggles){
-  // axes labels
   ctx.fillStyle = '#000'; ctx.font = '12px sans-serif';
   ctx.fillText('x (length units)', canvas.width - 140, canvas.height - 8);
   ctx.save(); ctx.translate(14, canvas.height/2); ctx.rotate(-Math.PI/2); ctx.fillText('Normalized deflection', 0, 0); ctx.restore();
 
-  // legend
   const colors = ['#1f77b4', '#2ca02c', '#d62728'];
   const legendX = canvas.width - 260; let legendY = 18;
   for (let i=0;i<modes.length;i++){
@@ -538,7 +550,6 @@ function drawAxesAndLegend(ctx, canvas, modes, useToggles){
   }
 }
 
-// --- Animation ---
 function startAnimation(){
   if (!lastModes || !lastModes.length) return;
   const sel = document.getElementById('animMode');
@@ -557,7 +568,6 @@ function stopAnimation(){
   const btnPlay = document.getElementById('btnPlay'); const btnPause = document.getElementById('btnPause');
   if (btnPlay) btnPlay.disabled = !(lastModes && lastModes.length);
   if (btnPause) btnPause.disabled = true;
-  // redraw static
   renderCombinedModes();
 }
 
@@ -569,7 +579,6 @@ function drawAnimatedFrame(t){
   const mode = lastModes[Math.min(anim.modeIndex, lastModes.length-1)];
 
   const m = getRefine();
-  // refined x positions
   const xPositions = [];
   let x = 0;
   for (let i=0;i<segments.length;i++){
@@ -580,12 +589,10 @@ function drawAnimatedFrame(t){
   const totalLength = segments.reduce((s,sg)=>s+sg.L,0) || 1;
   const scaleX = canvas.width / totalLength;
   const offsetY = canvas.height/2;
-  const scaleY = canvas.height * 0.4 * anim.amp; // scale with amp
+  const scaleY = canvas.height * 0.4 * anim.amp; 
 
-  // guides
   drawGuides(ctx, canvas, offsetY, canvas.height*0.4);
 
-  // mode data
   const full = mode.vec; const w = []; for (let d=0; d<full.length; d+=2) w.push(full[d]);
   const omega = 2*Math.PI*mode.freq*anim.speed;
 
@@ -600,7 +607,79 @@ function drawAnimatedFrame(t){
   drawAxesAndLegend(ctx, canvas, [mode], false);
 }
 
-// hook up anim controls
+// 6 & 7: Export Functions
+function getModeDataForExport() {
+  if (!lastModes || !lastModes.length) return null;
+  const m = getRefine();
+  const xPositions = [];
+  let x = 0;
+  // Reconstruct X positions based on refined grid
+  for (let i=0;i<segments.length;i++){
+    const L = segments[i].L; const sub = m+1; const Lsub = L/sub;
+    const start = (i===0)?0:1; 
+    for (let j=start;j<=sub;j++) xPositions.push(x + j*Lsub);
+    x += L;
+  }
+
+  const rows = [];
+  const numPoints = xPositions.length;
+  for(let i=0; i<numPoints; i++){
+    let row = { x: xPositions[i] };
+    lastModes.forEach((mode, idx) => {
+      // vec has [w0, th0, w1, th1...] -> we want w (even indices)
+      // i corresponds to node index i, so we want vec[2*i]
+      if (2*i < mode.vec.length) {
+        row[`Mode ${idx+1} (${mode.freq.toFixed(2)}Hz)`] = mode.vec[2*i];
+      }
+    });
+    rows.push(row);
+  }
+  return rows;
+}
+
+function exportJSON() {
+  const data = getModeDataForExport();
+  if (!data) { Swal.fire("No data", "Compute modes first.", "warning"); return; }
+  
+  const output = {
+    version: "1.0",
+    date: new Date().toLocaleDateString(),
+    timestamp: new Date().toLocaleTimeString(),
+    modes: data
+  };
+  
+  const blob = new Blob([JSON.stringify(output, null, 2)], {type: "application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "beam_modes.json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportCSV() {
+  const data = getModeDataForExport();
+  if (!data) { Swal.fire("No data", "Compute modes first.", "warning"); return; }
+  
+  // Headers
+  const headers = Object.keys(data[0]);
+  const csvRows = [];
+  csvRows.push(headers.join(","));
+  
+  data.forEach(row => {
+    const values = headers.map(header => row[header]);
+    csvRows.push(values.join(","));
+  });
+  
+  const blob = new Blob([csvRows.join("\n")], {type: "text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "beam_modes.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 (function(){
   const btnPlay = document.getElementById('btnPlay');
   const btnPause = document.getElementById('btnPause');
@@ -616,67 +695,10 @@ function drawAnimatedFrame(t){
   if (amp) amp.addEventListener('input', ()=>{ ampVal.textContent = parseFloat(amp.value).toFixed(1); if (anim.running) startAnimation(); });
 })();
 
-function submat(mat, idx){ return idx.map(i => idx.map(j => mat[i][j])); }
-function expandToFull(vecRed, free, N){ const full = Array(N).fill(0); for(let i=0;i<free.length;i++){ full[free[i]] = vecRed[i]; } return full; }
-function normalizeMode(full){ let maxAbs = 0; for (let i=0;i<full.length;i+=2){ const a = Math.abs(full[i]); if (a > maxAbs) maxAbs = a; } if (maxAbs < 1e-20) return full.slice(); return full.map(v => v / maxAbs); }
-
-// --- Test cases --- (primary nodes only in UI)
-function testCantileverUniform(){
-  const S = parseInt(document.getElementById('numSegments').value)||4;
-  segments = Array(S).fill(0).map(()=> ({E: 30e6, I: 100, L: 100/S, rho: 0.283, A: 1.0}));
-  nodes = Array(S+1).fill(0).map(()=>({bc:'free', W:0, Kv:0, Kr:0}));
-  nodes[0].bc = 'fixed'; // left fixed
-  drawBeam(); computeModesRefined();
-}
-function testSimplySupportedUniform(){
-  const S = parseInt(document.getElementById('numSegments').value)||4;
-  segments = Array(S).fill(0).map(()=> ({E: 30e6, I: 100, L: 120/S, rho: 0.283, A: 1.0}));
-  nodes = Array(S+1).fill(0).map(()=>({bc:'free', W:0, Kv:0, Kr:0}));
-  nodes[0].bc = 'pinned'; nodes[S].bc = 'pinned';
-  drawBeam(); computeModesRefined();
-}
-function testFixedFixedUniform(){
-  const S = parseInt(document.getElementById('numSegments').value)||4;
-  segments = Array(S).fill(0).map(()=> ({E: 30e6, I: 100, L: 120/S, rho: 0.283, A: 1.0}));
-  nodes = Array(S+1).fill(0).map(()=>({bc:'free', W:0, Kv:0, Kr:0}));
-  nodes[0].bc = 'fixed'; nodes[S].bc = 'fixed';
-  drawBeam(); computeModesRefined();
-}
-function testFixedPinnedUniform(){
-  const S = parseInt(document.getElementById('numSegments').value)||4;
-  segments = Array(S).fill(0).map(()=> ({E: 30e6, I: 100, L: 120/S, rho: 0.283, A: 1.0}));
-  nodes = Array(S+1).fill(0).map(()=>({bc:'free', W:0, Kv:0, Kr:0}));
-  nodes[0].bc = 'fixed'; nodes[S].bc = 'pinned';
-  drawBeam(); computeModesRefined();
-}
-// Refined tests using fixed m=10 but properties only at primary nodes
-function testSS_MidKv(){
-  const S = 4; document.getElementById('numSegments').value = S;
-  segments = Array(S).fill(0).map(()=> ({E: 30e6, I: 100, L: 200/S, rho: 0.283, A: 1.0}));
-  nodes = Array(S+1).fill(0).map(()=>({bc:'free', W:0, Kv:0, Kr:0}));
-  nodes[0].bc='pinned'; nodes[S].bc='pinned';
-  const mid = Math.floor(S/2); nodes[mid].Kv = 1000; // translational spring at mid primary node
-  drawBeam(); computeModesRefined();
-}
-function testCantileverTipMass(){
-  const S = 3; document.getElementById('numSegments').value = S;
-  segments = Array(S).fill(0).map(()=> ({E: 30e6, I: 80, L: 90/S, rho: 0.283, A: 0.8}));
-  nodes = Array(S+1).fill(0).map(()=>({bc:'free', W:0, Kv:0, Kr:0}));
-  nodes[0].bc = 'fixed'; nodes[S].W = 30; // lbf tip mass
-  drawBeam(); computeModesRefined();
-}
-
-// expose tests (optional)
-window.testCantileverUniform = testCantileverUniform;
-window.testSimplySupportedUniform = testSimplySupportedUniform;
-window.testFixedFixedUniform = testFixedFixedUniform;
-window.testFixedPinnedUniform = testFixedPinnedUniform;
-window.testSS_MidKv = testSS_MidKv;
-window.testCantileverTipMass = testCantileverTipMass;
-
-// Make buttons safe: expose globals
 window.buildBeam = buildBeam;
 window.computeModesRefined = computeModesRefined;
+window.exportJSON = exportJSON;
+window.exportCSV = exportCSV;
 
 // initial
 buildBeam();
