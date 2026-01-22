@@ -68,8 +68,10 @@
       <label>Gravity (G): <input id="gravityInput" type="number" value="386" style="width:60px"></label>
       <button onclick="buildBeam()">Build Beam</button>
       <button onclick="computeModesRefined()">Compute Modes</button>
-      <button onclick="exportJSON()">Export JSON</button>
-      <button onclick="exportCSV()">Export CSV</button>
+<button onclick="exportJSON()">Export JSON</button>
+<button onclick="importJSON()">Import JSON</button>
+<button onclick="exportCSV()">Export CSV</button>
+
     </div>
 
     <canvas id="beamCanvas" width="720" height="220"></canvas>
@@ -654,7 +656,13 @@ function exportJSON() {
     version: "1.0",
     date: new Date().toLocaleDateString(),
     timestamp: new Date().toLocaleTimeString(),
-    modes: data
+    gravity: parseFloat(document.getElementById("gravityInput").value) || 386,
+    configuration: {
+      segments: segments,
+      nodes: nodes
+    },
+    modes: data,
+    frequencies: lastModes ? lastModes.map(m => ({ freq: m.freq, lambdaGEP: m.lambdaGEP })) : []
   };
   
   const blob = new Blob([JSON.stringify(output, null, 2)], {type: "application/json"});
@@ -665,6 +673,74 @@ function exportJSON() {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+function importJSON() {
+  // Stop any running animation
+  stopAnimation();
+  
+  // Create a file input element
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.json,application/json';
+  
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        
+        // Validate it's our format
+        if (!data.configuration || !data.configuration.segments || !data.configuration.nodes) {
+          Swal.fire('Invalid Format', 'This JSON file does not contain valid beam configuration data.', 'error');
+          return;
+        }
+        
+        // Restore gravity setting
+        if (data.gravity) {
+          document.getElementById('gravityInput').value = data.gravity;
+        }
+        
+        // Restore segments and nodes
+        segments = JSON.parse(JSON.stringify(data.configuration.segments));
+        nodes = JSON.parse(JSON.stringify(data.configuration.nodes));
+        
+        // Update the UI
+        document.getElementById('numSegments').value = segments.length;
+        
+        // Clear previous solution
+        lastModes = null;
+        
+        // Redraw the beam
+        drawBeam();
+        
+        // Clear results display
+        renderFreqList([]);
+        buildModeToggles(0);
+        buildAnimControls(0);
+        renderCombinedModes();
+        
+        Swal.fire({
+          icon: 'success',
+          title: 'Configuration Imported',
+          text: `Loaded ${segments.length} segment(s) and ${nodes.length} node(s). Click "Compute Modes" to recalculate.`,
+          timer: 3000
+        });
+        
+      } catch (err) {
+        Swal.fire('Error', 'Failed to parse JSON file: ' + err.message, 'error');
+      }
+    };
+    
+    reader.readAsText(file);
+  });
+  
+  // Trigger the file picker
+  fileInput.click();
+}
+
 
 function exportCSV() {
   const data = getModeDataForExport();
@@ -707,10 +783,13 @@ function exportCSV() {
 window.buildBeam = buildBeam;
 window.computeModesRefined = computeModesRefined;
 window.exportJSON = exportJSON;
+window.importJSON = importJSON;  // ADD THIS LINE
 window.exportCSV = exportCSV;
+
 
 // initial
 buildBeam();
 </script>
 </body>
 </html>
+
